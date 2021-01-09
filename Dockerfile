@@ -85,7 +85,7 @@ RUN cd /build && \
     cd /build/*/ && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DOPENVAS_DEFAULT_SOCKET=/tmp/ospd.sock -DCMAKE_BUILD_TYPE=Release .. && \
     make && \
     make install && \
     cd /build && \
