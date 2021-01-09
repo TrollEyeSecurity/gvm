@@ -1,9 +1,9 @@
-## OpenVas Dockerfile (NO UI)
+## GVM Dockerfile (NO UI)
 
-#### Build the OpenVas container using this Dockerfile
+#### Build the GVM container using this Dockerfile
 
-`docker build -t trolleye/openvas:latest .`
+`docker build -t trolleye/gvm:latest .`
 
-#### Run the OpenVas container with 2222 open for SSH and delete when done
+#### Run the GVM container with 2222 open for SSH and delete when done
 
-`docker run --rm -p 2222:22 -it trolleye/openvas:latest`
+`docker run --rm -p 2222:22 -it trolleye/gvm:latest`
