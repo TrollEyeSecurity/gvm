@@ -28,13 +28,13 @@ if [[ ! -f "/firstrun" ]]; then
 	echo "Creating Openvas NVT sync user..."
 	useradd --home-dir /usr/local/share/openvas openvas-sync
 	mkdir /usr/local/var/lib/gvm/cert-data
-	mkdir /home/openvas_user
+	mkdir /home/gvm_user
 	chown openvas-sync:openvas-sync -R /usr/local/share/openvas
 	chown openvas-sync:openvas-sync -R /usr/local/var/lib/openvas
 	echo "Creating Greenbone Vulnerability system user..."
 	useradd --home-dir /usr/local/share/gvm gvm
-	useradd --home-dir /home/openvas_user openvas_user
-	usermod -a -G openvas_user gvm
+	useradd --home-dir /home/gvm_user gvm_user
+	usermod -a -G gvm_user gvm
 	chown gvm:gvm -R /usr/local/share/gvm
 	chown gvm:gvm -R /usr/local/var/lib/gvm
 	chown gvm:gvm -R /usr/local/var/log/gvm
@@ -42,11 +42,11 @@ if [[ ! -f "/firstrun" ]]; then
 	chown gvm:gvm -R /usr/local/var/run
 	chmod g+w /usr/local/var/run
 	chown openvas-sync:openvas-sync /usr/local/var/lib/gvm/cert-data
-	chown openvas_user:openvas_user -R /home/openvas_user
+	chown gvm_user:gvm_user -R /home/gvm_user
 	adduser openvas-sync gvm
 	adduser gvm openvas-sync
 	useradd --home-dir /usr/local/share/gvm openvas
-	echo "openvas_user:openvas_user" | chpasswd
+	echo "gvm_user:gvm_user" | chpasswd
 	touch /firstrun
 fi
 if [[ ! -f "/data/firstrun" ]]; then
