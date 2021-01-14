@@ -67,16 +67,6 @@ fi
 chown gvm:gvm -R /var/run/ospd/
 chown gvm:gvm -R /var/run/gvm/
 
-#Set sysctl
-sysctl -w net.core.somaxconn=1024
-sysctl vm.overcommit_memory=1
-if ! grep -q "net.core.somaxconn=1024" /etc/sysctl.conf; then
-	echo "net.core.somaxconn=1024"  >> /etc/sysctl.conf
-fi
-if ! grep -q "vm.overcommit_memory=1" /etc/sysctl.conf; then
-	echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
-fi
-
 # Download updates
 echo "Update NVT, CERT, and SCAP data"
 echo "Please note this step could take some time."
