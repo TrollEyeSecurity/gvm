@@ -1,117 +1,136 @@
 #!/usr/bin/env bash
 
-if  [[ ! -d /data ]]; then
-	echo "Creating Data folder..."
-        mkdir /data
-fi
-if  [[ ! -d /data/database ]]; then
-	echo "Creating Database folder..."
-	mv /var/lib/postgresql/12/main /data/database
-	ln -s /data/database /var/lib/postgresql/12/main
-	chown postgres:postgres -R /var/lib/postgresql/12/main
-	chown postgres:postgres -R /data/database
-fi
-if [[ -d /var/lib/postgresql/12/main ]]; then
-	echo "Fixing Database folder..."
-	rm -rf /var/lib/postgresql/12/main
-	ln -s /data/database /var/lib/postgresql/12/main
-	chown postgres:postgres -R /var/lib/postgresql/12/main
-	chown postgres:postgres -R /data/database
+function setup_postgres(){
+    if [[ ! -f /var/lib/pgsql/initdb_postgresql.log ]]; then
+        chown postgres:postgres -R /var/lib/pgsql/
+        su - postgres -c "initdb -D /var/lib/pgsql/data --no-locale -E UTF8"
+        ./start_postgres.sh
+	    su - postgres -c "createuser -DRS gvm"
+	    su - postgres -c "createdb -O gvm gvmd"
+	    su - postgres -c "psql gvmd -q --command='create role dba with superuser noinherit;'"
+	    su - postgres -c "psql gvmd -q --command='grant dba to gvm;'"
+	    su - postgres -c "psql gvmd -q --command='create extension \"uuid-ossp\";'"
+	    su - postgres -c "psql gvmd -q --command='create extension \"pgcrypto\";'"
+    fi
+}
+
+function download_update() {
+	RETRIES=0
+	DOWNLOAD_SUCCESS=0
+	COMMAND=$1
+	TEST=$2
+	MSG=$3
+
+	echo "$COMMAND"
+
+	while [[ ${DOWNLOAD_SUCCESS} -lt 1 ]]; do
+		if [[ ${RETRIES} -gt 50 ]]; then
+			echo "Download not successful: too many failed attempts"
+			echo "  rerun  $COMMAND manually"
+			return
+		fi
+
+		su - gvm -c "$COMMAND"
+
+		if [[ -f ${TEST} ]] ; then
+			echo "$COMMAND success"
+			DOWNLOAD_SUCCESS=1
+		else
+			echo "Retrying in 60 seconds..."
+			sleep 60
+			RETRIES=$(( $RETRIES + 1 ))
+		fi
+	done
+
+}
+
+# Add user for gvm-cli
+useradd --home-dir /home/gvm_user gvm_user
+usermod -a -G gvm_user gvm
+chown gvm_user:gvm_user -R /home/gvm_user
+echo "gvm_user:gvm_user" | chpasswd
+
+#Python
+alternatives --set python /usr/bin/python3
+echo -e "\nInstalling GVM tools..."
+pip3 install gvm-tools=="20.10.1"
+
+# Set up postgres
+setup_postgres
+
+# Add gvm user to redis socket
+if ! groups gvm |grep -q redis ; then
+	usermod -aG redis gvm
 fi
 
-./start_redis.sh
+# Make sure root is not greedy
+chown gvm:gvm -R /var/run/ospd/
+chown gvm:gvm -R /var/run/gvm/
 
-./start_postgres.sh
-
-if [[ ! -f "/firstrun" ]]; then
-	echo "Running first start configuration..."
-	echo "Creating Openvas NVT sync user..."
-	useradd --home-dir /usr/local/share/openvas openvas-sync
-	mkdir /usr/local/var/lib/gvm/cert-data
-	mkdir /home/gvm_user
-	chown openvas-sync:openvas-sync -R /usr/local/share/openvas
-	chown openvas-sync:openvas-sync -R /usr/local/var/lib/openvas
-	echo "Creating Greenbone Vulnerability system user..."
-	useradd --home-dir /usr/local/share/gvm gvm
-	useradd --home-dir /home/gvm_user gvm_user
-	usermod -a -G gvm_user gvm
-	chown gvm:gvm -R /usr/local/share/gvm
-	chown gvm:gvm -R /usr/local/var/lib/gvm
-	chown gvm:gvm -R /usr/local/var/log/gvm
-	chmod 770 -R /usr/local/var/lib/gvm
-	chown gvm:gvm -R /usr/local/var/run
-	chmod g+w /usr/local/var/run
-	chown openvas-sync:openvas-sync /usr/local/var/lib/gvm/cert-data
-	chown gvm_user:gvm_user -R /home/gvm_user
-	adduser openvas-sync gvm
-	adduser gvm openvas-sync
-	useradd --home-dir /usr/local/share/gvm openvas
-	echo "gvm_user:gvm_user" | chpasswd
-	touch /firstrun
+#Set sysctl
+sysctl -w net.core.somaxconn=1024
+sysctl vm.overcommit_memory=1
+if ! grep -q "net.core.somaxconn=1024" /etc/sysctl.conf; then
+	echo "net.core.somaxconn=1024"  >> /etc/sysctl.conf
 fi
-if [[ ! -f "/data/firstrun" ]]; then
-	echo "Creating Greenbone Vulnerability Manager database"
-	su -c "createuser -DRS gvm" postgres
-	su -c "createdb -O gvm gvmd" postgres
-	su -c "psql --dbname=gvmd --command='create role dba with superuser noinherit;'" postgres
-	su -c "psql --dbname=gvmd --command='grant dba to gvm;'" postgres
-	su -c "psql --dbname=gvmd --command='create extension \"uuid-ossp\";'" postgres
-	su -c "psql --dbname=gvmd --command='create extension \"pgcrypto\";'" postgres
-	touch /data/firstrun
-fi
-if  [[ ! -d /data/gvmd ]]; then
-	echo "Creating gvmd folder..."
-	mkdir /data/gvmd
-	chown gvm:gvm -R /data/gvmd
-	rm -rf /usr/local/var/lib/gvm/gvmd
-	ln -s /data/gvmd /usr/local/var/lib/gvm/gvmd
+if ! grep -q "vm.overcommit_memory=1" /etc/sysctl.conf; then
+	echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
 fi
 
-echo -e "\nUpdating NVTs..."
+# Download updates
+echo "Update NVT, CERT, and SCAP data"
+echo "Please note this step could take some time."
+
+echo -e "\nUpdating NVTs...."
 echo "#################################################################"
-su -c "/usr/local/bin/greenbone-nvt-sync" openvas-sync
-sleep 5
+download_update /usr/bin/greenbone-nvt-sync /var/lib/gvm/plugins/plugin_feed_info.inc
 
-echo -e "\nUpdating GVMD Data..."
+echo -e "\nUpdating GVMD_DATA..."
 echo "#################################################################"
-su -c "/usr/local/sbin/greenbone-feed-sync --type GVMD_DATA" openvas-sync
-sleep 5
+download_update  "/usr/sbin/greenbone-feed-sync --type GVMD_DATA" /var/lib/gvm/data-objects/gvmd/timestamp
 
 echo -e "\nUpdating SCAP data..."
 echo "#################################################################"
-su -c "/usr/local/sbin/greenbone-feed-sync --type SCAP" openvas-sync
-sleep 5
+download_update "/usr/sbin/greenbone-feed-sync --type SCAP" /var/lib/gvm/scap-data/official-cpe-dictionary_v2.2.xml
 
 echo -e "\nUpdating CERT data..."
 echo "#################################################################"
-su -c "/usr/local/sbin/greenbone-feed-sync --type CERT" openvas-sync
-sleep 5
+download_update "/usr/sbin/greenbone-feed-sync --type CERT"  /var/lib/gvm/cert-data/timestamp
 
-# todo: test and add Vulners
-# echo -e "\nAdding Vulners..."
-# echo "#################################################################"
-# for file in vulners/*.zip;
-# do
-#    :
-#    unzip ${file} -d /usr/local/var/lib/openvas/plugins/private/
-# done
-
-if [[ ! -d /var/run/ospd ]]; then
-  mkdir /var/run/ospd
+# Handle certs
+echo -n "\nUpdating OpenVAS Manager certificates: "
+su - gvm -c "/usr/bin/gvm-manage-certs -V >/dev/null 2>&1"
+if [[ $? -ne 0 ]]; then
+	su - gvm -c "/usr/bin/gvm-manage-certs -a  >/dev/null 2>&1"
+	echo "Complete"
+else
+	echo "Already Exists"
 fi
 
+# Start redis and ospd
+./start_redis.sh
 ./start_ospd-openvas.sh
 
-echo -e "\nMigrate the database..."
+# Update VT Info and then rebuild SCAP and DB
+su - gvm -c "openvas --update-vt-info"
+
+echo -e "\nRemoving /var/run/gvm/feed-update.lock..."
 echo "#################################################################"
-su -c "gvmd --osp-vt-update=/tmp/ospd.sock --migrate" gvm
-sleep 5
+while [[ -f /var/run/gvm/feed-update.lock ]]
+do
+    rm -rf /var/run/gvm/feed-update.lock
+    sleep 2
+done
 
 echo -e "\nRebuilding SCAP for gvmd..."
 echo "#################################################################"
-su -c "gvmd --osp-vt-update=/tmp/ospd.sock --rebuild-scap=ovaldefs" gvm
+su -c "gvmd --osp-vt-update=/run/ospd/ospd.sock --rebuild-scap=ovaldefs" gvm
 sleep 5
 
 echo -e "\nRebuilding database for gvmd..."
 echo "#################################################################"
-su -c "gvmd --osp-vt-update=/tmp/ospd.sock --rebuild" gvm
+su -c "gvmd --osp-vt-update=/run/ospd/ospd.sock --rebuild" gvm
+
+echo "Cleaning up..."
+su - postgres -c "pg_ctl -D /var/lib/pgsql/data -l logfile stop"
+rm -rf /run/nologin

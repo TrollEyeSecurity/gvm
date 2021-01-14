@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 echo "Starting PostgreSQL..."
-/usr/bin/pg_ctlcluster --skip-systemctl-redirect 12 main start
+su - postgres -c "pg_ctl -D /var/lib/pgsql/data -l logfile start"
