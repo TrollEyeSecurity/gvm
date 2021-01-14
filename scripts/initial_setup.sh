@@ -112,8 +112,6 @@ fi
 ./start_ospd-openvas.sh
 
 # Update VT Info and then rebuild SCAP and DB
-su - gvm -c "openvas --update-vt-info"
-
 echo -e "\nRemoving /var/run/gvm/feed-update.lock..."
 echo "#################################################################"
 while [[ -f /var/run/gvm/feed-update.lock ]]
@@ -122,10 +120,13 @@ do
     sleep 2
 done
 
+echo -e "\nUpdating VT info for openvas..."
+echo "#################################################################"
+su - gvm -c "openvas --update-vt-info"
+
 echo -e "\nRebuilding SCAP for gvmd..."
 echo "#################################################################"
 su -c "gvmd --osp-vt-update=/run/ospd/ospd.sock --rebuild-scap=ovaldefs" gvm
-sleep 5
 
 echo -e "\nRebuilding database for gvmd..."
 echo "#################################################################"
