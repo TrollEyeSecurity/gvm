@@ -101,7 +101,7 @@ echo "#################################################################"
 download_update "/usr/sbin/greenbone-feed-sync --type CERT"  /var/lib/gvm/cert-data/timestamp
 
 # Handle certs
-echo -n "\nUpdating OpenVAS Manager certificates: "
+echo -e "\nUpdating OpenVAS Manager certificates: "
 su - gvm -c "/usr/bin/gvm-manage-certs -V >/dev/null 2>&1"
 if [[ $? -ne 0 ]]; then
 	su - gvm -c "/usr/bin/gvm-manage-certs -a  >/dev/null 2>&1"
