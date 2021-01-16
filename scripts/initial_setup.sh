@@ -46,7 +46,7 @@ function download_update() {
 
 # Add user for gvm-cli
 useradd --home-dir /home/gvm_user gvm_user
-usermod -a -G gvm_user gvm
+usermod -aG gvm gvm_user
 chown gvm_user:gvm_user -R /home/gvm_user
 echo "gvm_user:gvm_user" | chpasswd
 
@@ -66,6 +66,19 @@ fi
 # Make sure root is not greedy
 chown gvm:gvm -R /var/run/ospd/
 chown gvm:gvm -R /var/run/gvm/
+
+#Set sysctl
+if ! grep -q "net.core.somaxconn=1024" /etc/sysctl.conf; then
+	echo "net.core.somaxconn=1024"  >> /etc/sysctl.conf
+fi
+if ! grep -q "vm.overcommit_memory=1" /etc/sysctl.conf; then
+	echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
+fi
+
+#Disable transparent hugepages
+if ! $(grub2-editenv - list | grep -q transparent_hugepage=never) ; then
+	grub2-editenv - set "$(grub2-editenv - list | grep kernelopts) transparent_hugepage=never"
+fi
 
 # Download updates
 echo "Update NVT, CERT, and SCAP data"
@@ -116,11 +129,11 @@ su - gvm -c "openvas --update-vt-info"
 
 echo -e "\nRebuilding SCAP for gvmd..."
 echo "#################################################################"
-su -c "gvmd --osp-vt-update=/run/ospd/ospd.sock --rebuild-scap=ovaldefs" gvm
+su -c "gvmd --rebuild-scap=ovaldefs" gvm
 
 echo -e "\nRebuilding database for gvmd..."
 echo "#################################################################"
-su -c "gvmd --osp-vt-update=/run/ospd/ospd.sock --rebuild" gvm
+su -c "gvmd --rebuild" gvm
 
 echo "Cleaning up..."
 su - postgres -c "pg_ctl -D /var/lib/pgsql/data -l logfile stop"
