@@ -9,6 +9,7 @@ ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && ssh-keygen -t dsa -f /et
 #Set sysctl
 sysctl -w net.core.somaxconn=1024
 sysctl vm.overcommit_memory=1
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
 
 # Start Redis, PostgreSQL, and OSPd
 ./start_redis.sh
