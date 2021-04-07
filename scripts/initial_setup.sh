@@ -53,6 +53,7 @@ echo "gvm_user:gvm_user" | chpasswd
 #Python
 alternatives --set python /usr/bin/python3
 echo -e "\nInstalling GVM tools..."
+pip3 install --upgrade pip
 pip3 install gvm-tools=="20.10.1"
 
 # Set up postgres
