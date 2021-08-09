@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 echo "Starting PostgreSQL..."
-su - postgres -c "pg_ctl -D /var/lib/pgsql/data -l logfile start"
+sudo -u postgres /usr/lib/postgresql/11/bin/pg_ctl -D /var/lib/postgresql/11/main/data -l /var/lib/postgresql/11/main/data/logfile start
