@@ -7,7 +7,7 @@
 
 #### Or just pull from dockerhub.
 
-`docker pull trolleye/gvm`
+`docker pull trolleye/gvm:20.8.2`
 
 
 #### Run the GVM container with 2222 open for SSH and delete when done
