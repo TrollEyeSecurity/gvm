@@ -25,7 +25,9 @@ mkdir -p "$BUILD_DIR"
 mkdir -p "$INSTALL_DIR"
 
 # Installing Common Build Dependencies
-sudo apt install -y --no-install-recommends --assume-yes \
+
+# Update the package lists:
+sudo apt update && sudo apt install -y --no-install-recommends --assume-yes \
   bison \
   build-essential \
   cmake \
@@ -102,7 +104,6 @@ cmake "$SOURCE_DIR"/gvm-libs-$GVM_LIBS_VERSION \
   -DCMAKE_BUILD_TYPE=Release \
   -DSYSCONFDIR=/etc \
   -DLOCALSTATEDIR=/var
-  # -DGVM_PID_DIR=/run/gvm
 make -j "$(nproc)"
 make DESTDIR="$INSTALL_DIR" install
 sudo cp -rv "$INSTALL_DIR"/* /
@@ -119,7 +120,7 @@ cmake "$SOURCE_DIR"/gvmd-$GVMD_VERSION \
   -DLOCALSTATEDIR=/var \
   -DSYSCONFDIR=/etc \
   -DGVM_DATA_DIR=/var \
-  -DGVM_RUN_DIR=/run/gvm \
+  -DGVM_RUN_DIR=/run/gvmd \
   -DOPENVAS_DEFAULT_SOCKET=/run/ospd/ospd-openvas.sock \
   -DGVM_FEED_LOCK_PATH=/var/lib/gvm/feed-update.lock \
   -DSYSTEMD_SERVICE_DIR=/lib/systemd/system \
