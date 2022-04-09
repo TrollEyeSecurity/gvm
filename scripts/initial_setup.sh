@@ -5,9 +5,9 @@ export PASSWORD=${PASSWORD:-admin}
 page_separator="#################################################################"
 
 function setup_postgres(){
-    if [[ ! -f /var/lib/postgresql/11/main/initdb_postgresql.log ]]; then
-        sudo chown postgres:postgres -R /var/lib/postgresql/11/main
-        sudo -u postgres /usr/lib/postgresql/11/bin/initdb -D /var/lib/postgresql/11/main/data --no-locale -E UTF8
+    if [[ ! -f /var/lib/postgresql/13/main/initdb_postgresql.log ]]; then
+        sudo chown postgres:postgres -R /var/lib/postgresql/13/main
+        sudo -u postgres /usr/lib/postgresql/13/bin/initdb -D /var/lib/postgresql/13/main/data --no-locale -E UTF8
         /start_postgres.sh
 	    sudo -u postgres createuser -DRS gvm
 	    sudo -u postgres createdb -O gvm gvmd
@@ -68,19 +68,27 @@ sudo usermod -aG gvm gvm_user
 
 # create dir
 sudo mkdir /var/run/ospd/
+sudo mkdir /var/run/gsad/
+sudo touch /run/gvmd/gvmd.pid
 
-# Make sure root is not greedy
+# Adjusting directory permissions
 sudo chown -R gvm:gvm /var/lib/gvm
 sudo chown -R gvm:gvm /var/lib/openvas
 sudo chown -R gvm:gvm /var/log/gvm
-sudo chown -R gvm:gvm /var/run/gvm
-sudo chown -R gvm:gvm /var/run/ospd/
+sudo chown -R gvm:gvm /run/gvmd
+sudo chown -R gvm:gvm /run/gvm
+sudo chown -R gvm:gvm /run/gsad
 sudo chown -R gvm:gvm /run/ospd/
+
 sudo chmod -R g+srw /var/lib/gvm
 sudo chmod -R g+srw /var/lib/openvas
 sudo chmod -R g+srw /var/log/gvm
+
+# Adjusting gvmd permissions
 sudo chown gvm:gvm /usr/local/sbin/gvmd
 sudo chmod 6750 /usr/local/sbin/gvmd
+
+# Adjusting feed sync script permissions
 sudo chown gvm:gvm /usr/local/bin/greenbone-nvt-sync
 sudo chmod 740 /usr/local/sbin/greenbone-feed-sync
 sudo chown gvm:gvm /usr/local/sbin/greenbone-*-sync
@@ -113,7 +121,6 @@ echo $page_separator
 echo -e "\nUpdating NVTs...."
 echo $page_separator
 do_nvt_sync greenbone-nvt-sync || { echo -e "\nUpdating NVTs failed" ; exit 1; }
-# sudo -u gvm /usr/bin/rsync -ltvrP --delete --exclude private/ "rsync://feed.community.greenbone.net:/nvt-feed" "/var/lib/openvas/plugins/"
 sleep 5
 
 echo "Updating SCAP data..."
@@ -169,5 +176,6 @@ sudo -u gvm gvmd --rebuild
 
 echo "Cleaning up..."
 echo $page_separator
-sudo -u postgres /usr/lib/postgresql/11/bin/pg_ctl -D /var/lib/postgresql/11/main/data -l logfile stop
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/data -l logfile stop
 sudo rm -rf /run/nologin
+# sudo rm -rm /var/log/gvm/*

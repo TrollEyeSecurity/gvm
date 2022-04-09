@@ -10,20 +10,17 @@ sudo /etc/init.d/ssh start
 /start_postgres.sh
 /start_ospd-openvas.sh
 
+sleep 2
 # Start the core GVM processes (NO UI - GSA)
 echo "Starting Greenbone Vulnerability Manager..."
-sudo -u gvm gvmd
+sudo -u gvm gvmd --osp-vt-update=/run/ospd/ospd-openvas.sock --listen-group=gvm
 
-while  [[ ! -S /run/gvm/gvmd.sock ]]; do
+while  [[ ! -S /run/gvmd/gvmd.sock ]]; do
 	sleep 1
 done
 
 # make sure gmv-cli can access the gvmd.sock
-sudo chmod 770 /run/gvm/gvmd.sock
-
-# Make sure root is not greedy
-sudo chown gvm:gvm -R /var/run/ospd/
-sudo chown gvm:gvm -R /var/run/gvm/
+sudo chmod 770 /run/gvmd/gvmd.sock
 
 # Add GVM admin user
 until sudo -u gvm gvmd --get-users; do

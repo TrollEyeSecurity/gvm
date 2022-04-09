@@ -1,4 +1,4 @@
-FROM debian:buster
+FROM debian:bullseye
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 LABEL maintainer="avery.rozar@trolleyesecurity.com"
@@ -16,4 +16,4 @@ RUN chmod +x /*.sh
 USER gvm_user
 RUN bash /install_gvm.sh
 RUN bash /initial_setup.sh
-CMD sudo /start.sh
+#CMD sudo /start.sh
